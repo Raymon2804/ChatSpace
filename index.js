@@ -4,12 +4,17 @@ const mongoose = require('mongoose');
 const path=require("path");
 const Chat=require("./models/chat.js")
 const methodOverride=require("method-override");
+const http = require("http");
+const server = http.createServer(app);
+const { Server } = require("socket.io");
+const io = new Server(server)
 
 app.set("views",path.join(__dirname,"views"))
 app.set("view engine","ejs");
 app.use(express.static(path.join(__dirname,"public")));
 app.use(express.urlencoded({extended:true}));
 app.use(methodOverride("_method"));
+
 main().then(()=>{
     console.log("connection is successful")
 }).catch(err => console.log(err));
@@ -17,6 +22,19 @@ main().then(()=>{
 async function main() {
   await mongoose.connect('mongodb://127.0.0.1:27017/whatsapp');
 }
+
+//socket.io connection
+io.on("connection", (socket) => {
+    console.log("User connected:", socket.id);
+
+    socket.on("chatMessage", (msg) => {
+        io.emit("chatMessage", msg);
+    });
+
+    socket.on("disconnect", () => {
+        console.log("User disconnected:", socket.id);
+    });
+});
 
 app.get("/chat",async(req,res)=>{
     let chats=await Chat.find();
@@ -65,6 +83,6 @@ app.delete("/chat/:id",async(req,res)=>{
 app.get("/",(req,res)=>{
     res.send("root is working");
 })
-app.listen(8080, ()=>{
-    console.log("sever is running");
+server.listen(8080, () => {
+    console.log("server is running on port 8080");
 });
